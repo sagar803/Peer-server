@@ -21,7 +21,8 @@ const io = new Server(server, {
 const socketToUserMapping = new Map();
 
 function getOnlineUsers() {
-    return  Array.from(socketToUserMapping.entries());
+    return  Array.from(socketToUserMapping.entries()).map(([socketId, user]) => ({ socketId, user }));
+//    return  Array.from(socketToUserMapping.entries());
 }
 
 
@@ -42,33 +43,24 @@ io.on('connection', (socket) => {
 
     socket.on('call_user', ({to, offer}) => {
         console.log('user called', to);
-        const name = socketToUserMapping.get(socket.id).name;
-        socket.to(to).emit('incomming_call', { from: socket.id, offer, name})
+        const userData = socketToUserMapping.get(socket.id);
+        socket.to(to).emit('incomming_call', { from: socket.id, offer, userData})
     })
     
-    socket.on('call_accepted', ({ to, ans }) => {
+    socket.on('call_accepted', ({ to, ans, user }) => {
         console.log('call accepted', to );
-        socket.to(to).emit('call_accepted', { from: socket.id, ans })
+        socket.to(to).emit('call_accepted', { from: socket.id, ans , user})
     })
 
-    socket.on('ice-candidate', (data) => {
-        console.log('ice candidate')
-        console.log(data.candidate)
-        io.to(data.to).emit('ice-candidate', data.candidate);
+    socket.on('ice-candidate', ({to, candidate}) => {
+        console.log('sending ice candidate')
+        socket.to(to).emit('ice-candidate', {from: socket.id, candidate});
     });
 
-    socket.on('end-call', ({to}) => {
-        console.log('call ended');
-        console.log(to);
-        socket.to(to).emit('call-ended', {from: socket.id})
+    socket.on('end_call', ({to}) => {
+        console.log('call ended', to);
+        socket.to(to).emit('call_disconnected', {from : socket.id});
     })
-    socket.on('disconnect', ({to}) => {
-        const onlineUsers = getOnlineUsers(socket.id);
-        io.emit('online-users', { onlineUsers});
-        socketToUserMapping.delete(socket.id);
-        console.log('user disconnected');
-    })
-
 });
 
 const port = process.env.PORT || 8001;
