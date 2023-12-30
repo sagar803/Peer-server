@@ -20,6 +20,11 @@ const io = new Server(server, {
 //key socketid and value is an object having name and email
 const socketToUserMapping = new Map();
 
+function getOnlineUsers() {
+    return  Array.from(socketToUserMapping.entries());
+}
+
+
 io.on('connection', (socket) => {
     console.log("User Connected:" , socket.id)
     
@@ -31,7 +36,7 @@ io.on('connection', (socket) => {
     })
 
     socket.on("new-user-online" , () => {
-        const onlineUsers = Array.from(socketToUserMapping.entries());
+        const onlineUsers = getOnlineUsers(socket.id);
         io.emit('online-users', { onlineUsers});
     })
 
@@ -58,9 +63,9 @@ io.on('connection', (socket) => {
         socket.to(to).emit('call-ended', {from: socket.id})
     })
     socket.on('disconnect', ({to}) => {
-        socketToUserMapping.delete(socket.id);
-        const onlineUsers = Array.from(socketToUserMapping.entries());
+        const onlineUsers = getOnlineUsers(socket.id);
         io.emit('online-users', { onlineUsers});
+        socketToUserMapping.delete(socket.id);
         console.log('user disconnected');
     })
 
