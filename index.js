@@ -61,6 +61,14 @@ io.on('connection', (socket) => {
         console.log('call ended', to);
         socket.to(to).emit('call_disconnected', {from : socket.id});
     })
+    socket.on('disconnect', () => {
+        const onlineUsers = getOnlineUsers(socket.id);
+        io.emit('online-users', { onlineUsers});
+        socketToUserMapping.delete(socket.id);
+        console.log('user disconnected');
+    })
+
+
 });
 
 const port = process.env.PORT || 8001;
