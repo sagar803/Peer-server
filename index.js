@@ -17,46 +17,49 @@ const io = new Server(server, {
   },
 });
 
-//key socketid and value is an object having name and email
 const socketToUserMapping = new Map();
 
 function getOnlineUsers() {
-  return Array.from(socketToUserMapping.entries()).map(([socketId, user]) => ({
-    socketId,
-    user,
+  return Array.from(socketToUserMapping.entries()).map(([id, name]) => ({
+    id,
+    name,
   }));
-  //    return  Array.from(socketToUserMapping.entries());
 }
 
 io.on("connection", (socket) => {
-  console.log("User Connected:", socket.id);
+  console.log("New user connected");
+  socket.emit("refresh", socket.id);
 
-  socket.on("login", (data) => {
-    const { name, email } = data;
-    console.log("user joined:", data);
-    socketToUserMapping.set(socket.id, data);
-    socket.emit("login_successful", { ...data, id: socket.id });
-  });
-
-  socket.on("new-user-online", () => {
-    const onlineUsers = getOnlineUsers(socket.id);
+  socket.on("login", ({ name }) => {
+    console.log("User Logged In:", { name, id: socket.id });
+    socketToUserMapping.set(socket.id, name);
+    socket.emit("self", { name, id: socket.id });
+    const onlineUsers = getOnlineUsers();
     io.emit("online-users", { onlineUsers });
   });
 
   socket.on("call_user", ({ to, offer }) => {
     console.log("user called", to);
-    const userData = socketToUserMapping.get(socket.id);
-    socket.to(to).emit("incomming_call", { from: socket.id, offer, userData });
+    const name = socketToUserMapping.get(socket.id);
+    console.log(name);
+    console.log(socket.id);
+    console.log(to);
+    socket.to(to).emit("incomming_call", { from: socket.id, offer });
   });
 
-  socket.on("call_accepted", ({ to, ans, user }) => {
+  socket.on("call_accepted", ({ to, ans }) => {
     console.log("call accepted", to);
-    socket.to(to).emit("call_accepted", { from: socket.id, ans, user });
+    socket.to(to).emit("call_accepted", { from: socket.id, ans });
   });
 
   socket.on("ice-candidate", ({ to, candidate }) => {
     console.log("sending ice candidate");
     socket.to(to).emit("ice-candidate", { from: socket.id, candidate });
+  });
+
+  socket.on("call_rejected", ({ to }) => {
+    console.log("call ended", to);
+    socket.to(to).emit("call_rejected", { from: socket.id });
   });
 
   socket.on("end_call", ({ to }) => {
@@ -65,8 +68,8 @@ io.on("connection", (socket) => {
   });
   socket.on("disconnect", () => {
     const onlineUsers = getOnlineUsers(socket.id);
-    io.emit("online-users", { onlineUsers });
     socketToUserMapping.delete(socket.id);
+    io.emit("online-users", { onlineUsers });
     console.log("user disconnected");
   });
 });
