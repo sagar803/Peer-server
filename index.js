@@ -67,9 +67,10 @@ io.on("connection", (socket) => {
     socket.to(to).emit("call_disconnected", { from: socket.id });
   });
   socket.on("disconnect", () => {
-    const onlineUsers = getOnlineUsers(socket.id);
     socketToUserMapping.delete(socket.id);
+    const onlineUsers = getOnlineUsers();
     io.emit("online-users", { onlineUsers });
+
     console.log("user disconnected");
   });
 });
